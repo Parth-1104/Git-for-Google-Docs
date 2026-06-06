@@ -5,6 +5,7 @@ const fs = require('fs');
 const chokidar = require('chokidar');
 const mammoth = require('mammoth');
 const axios = require('axios');
+require('dotenv').config();
 
 // Catch running command line syntax arguments (e.g., gitdoc track ./test.docx)
 const args = process.argv.slice(2);
@@ -12,7 +13,8 @@ const command = args[0];
 const targetFile = args[1];
 
 // 🌐 Target Local or Live Backend Deploy URL
-const BACKEND_URL = "http://localhost:8080";
+const BACKEND_URL = process.env.BACKEND_URL;
+
 
 if (command !== 'track' || !targetFile) {
   console.log('\n❌ Invalid Usage Sequence Detected.');
