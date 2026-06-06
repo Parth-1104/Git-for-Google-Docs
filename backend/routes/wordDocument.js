@@ -17,135 +17,20 @@ const dmp = new diffMatchPatch();
 // In-memory runtime tracking cache (The volatile shield layer)
 const trackedFiles = {};
 
+
+const {track}=require('../controller/local.js')
+
 /**
  * 🚀 ROUTE: POST /api/word/track
  * PURPOSE: "git init" for a local Word file. Registers database state and deploys the OS watcher.
  */
-router.post('/track', async (req, res) => {
-  const { filePath } = req.body;
-
-  if (!filePath) {
-    return res.status(400).json({ error: 'Missing absolute filePath' });
-  }
-
-  const absolutePath = path.resolve(filePath);
-  const fileDirectory = path.dirname(absolutePath);
-  const fileName = path.basename(absolutePath);
-  const tempFileName = `~$${fileName}`; // Word's transactional runtime lock file descriptor
-
-  if (!fs.existsSync(absolutePath)) {
-    return res.status(404).json({ error: 'Target Word file not found at path.' });
-  }
-
-  if (trackedFiles[absolutePath]) {
-    return res.json({ message: 'This document is already under active tracking.' });
-  }
-
-  try {
-    console.log(`\n===========================================`);
-    console.log(`🔍 INITIALIZING HIGH-SECURITY LEDGER FOR: ${fileName}`);
-
-    // Extract initial baseline text when tracking starts
-    const initialExtraction = await mammoth.extractRawText({ path: absolutePath });
-    const baseText = initialExtraction.value;
-
-    // 🗄️ DATABASE INITIALIZATION STATE MACHINE
-    let repo = await Repository.findOne({ googleDocId: absolutePath });
-
-    if (!repo) {
-      console.log(`🆕 First-time file registration detected. Creating database footprint...`);
-      
-      repo = new Repository({
-        googleDocId: absolutePath,
-        docName: fileName,
-        refreshToken: 'LOCAL_DESKTOP_DAEMON',
-        currentVersionIndex: 1
-      });
-      await repo.save();
-
-      // Seed the Genesis Commit (v1) directly to MongoDB
-      const genesisCommit = new Commit({
-        googleDocId: absolutePath,
-        versionIndex: 1,
-        deltas: [[0, baseText]], // Git equivalent of tracking raw text baseline setup
-        commitType: 'GENESIS'
-      });
-      await genesisCommit.save();
-      console.log(`🍃 Genesis structural record written to MongoDB ledger.`);
-    } else {
-      console.log(`📂 Existing repository found in database. Fast-forwarding state tracking...`);
-    }
-
-    // Mount unified tracking runtime parameters in system RAM
-    trackedFiles[absolutePath] = {
-      cachedText: baseText,                        // Last committed text benchmark block
-      liveBuffer: baseText,                        // 🛡️ High-frequency RAM cache catching "Don't Save" strokes
-      currentVersionIndex: repo.currentVersionIndex,
-      watcher: chokidar.watch(fileDirectory, {
-        persistent: true,
-        ignoreInitial: true,
-        depth: 0
-      })
-    };
-
-    console.log(`📌 Baseline Synced at Version Reference Index: v${repo.currentVersionIndex}`);
-    console.log(`===========================================`);
-
-    // ⚡ INTERCEPTOR OS LIFESTYLE TIMING LINKS
-    trackedFiles[absolutePath].watcher.on('all', async (event, changedFilePath) => {
-      const changedFileName = path.basename(changedFilePath);
-
-      // TRACKER 1: Passive In-Memory Text Scraping (Updates your RAM buffer during typing)
-      // Tracks changes whenever Word hits the core document filesystem stream or updates owner logs
-      if ((changedFileName === fileName || changedFileName === tempFileName) && event === 'change') {
-        try {
-          const extraction = await mammoth.extractRawText({ path: absolutePath });
-          if (extraction.value && extraction.value !== trackedFiles[absolutePath].liveBuffer) {
-            // Silently capture Word's auto-flushed disk blocks into our memory layer
-            trackedFiles[absolutePath].liveBuffer = extraction.value; 
-          }
-        } catch (e) {
-          // Soft catch to bypass transient EBUSY locks while Word writes binary segments
-        }
-      }
-
-      // TRACKER 2: User explicitly hits Save (Cmd + S) on the primary file
-      if (changedFileName === fileName && event === 'change') {
-        console.log(`\n💾 EVENT ROUTER: User Triggered Manual Save (Cmd + S)`);
-        await executeCommitGateway(absolutePath, false);
-      }
-
-      // TRACKER 3: User clicks the Red Cross button (Word deletes the lock file)
-      if (changedFileName === tempFileName && event === 'unlink') {
-        console.log(`\n🚨 EVENT ROUTER: Document Closed ("Don't Save" Protection Fired)`);
-        
-        // ⏳ A tiny 50ms pause allows final async FS threads to settle right as the lock clears
-        setTimeout(async () => {
-          await executeCommitGateway(absolutePath, true);
-        }, 50);
-      }
-    });
-
-    res.json({
-      message: `Tracking activated for "${fileName}". Database ledger hooked.`,
-      absolutePath,
-      currentVersion: repo.currentVersionIndex
-    });
-
-  } catch (error) {
-    console.error('Failed to initialize local tracking matrix:', error.message);
-    res.status(500).json({ error: 'Failed to establish tracking system.' });
-  }
-});
+router.post('/track', track);
 
 
 
 
 
-/**
- * 💾 ROUTE: GET /api/word/download-commit
- * PURPOSE: Reconstructs a historical text state directly from raw delta operations and builds a downloadable .docx binary.
- */
+
 router.get('/download-commit', async (req, res) => {
   const { filePath, targetVersion } = req.query;
 
@@ -222,13 +107,7 @@ router.get('/download-commit', async (req, res) => {
   }
 });
 
-/**
- * 📡 ROUTE: GET /api/word/commits
- */
-/**
- * 📡 ROUTE: GET /api/word/commits
- * PURPOSE: Fetches the full version timeline sequence for a file to render on your frontend dashboard.
- */
+
 router.get('/commits', async (req, res) => {
   let { filePath } = req.query;
 
@@ -337,11 +216,7 @@ async function executeCommitGateway(filePath, wasDiscarded) {
 }
 
 
-/**
- * 📥 ROUTE: POST /api/word/commit-payload
- * PURPOSE: Endpoint for the terminal CLI. Accepts text directly from the user's machine,
- * computes the Git diff, and logs it straight into MongoDB Atlas.
- */
+
 router.post('/commit-payload', async (req, res) => {
   const { filePath, docName, currentText } = req.body;
 
@@ -350,7 +225,7 @@ router.post('/commit-payload', async (req, res) => {
   }
 
   try {
-    // 1. Check or initialize the master repository footprint in the cloud database
+   
     let repo = await Repository.findOne({ googleDocId: filePath });
     if (!repo) {
       repo = new Repository({
@@ -361,7 +236,7 @@ router.post('/commit-payload', async (req, res) => {
       });
       await repo.save();
 
-      // Seed baseline genesis block
+     
       const genesisCommit = new Commit({
         googleDocId: filePath,
         versionIndex: 1,
@@ -373,33 +248,33 @@ router.post('/commit-payload', async (req, res) => {
       return res.json({ message: 'Genesis cloud repository mapped successfully!', version: 1 });
     }
 
-    // 2. Fetch the absolute last recorded commit from the database to find the baseline text
+ 
     const lastCommit = await Commit.findOne({ googleDocId: filePath }).sort({ versionIndex: -1 });
     
-    // Reconstruct the previous text state directly from the last DB commit's deltas
+
     let previousText = "";
     if (lastCommit) {
       if (lastCommit.commitType === 'GENESIS') {
         previousText = lastCommit.deltas[0][1];
       } else {
-        // Direct reconstruction from equal/insert operations
+
         lastCommit.deltas.forEach(([op, txt]) => {
           if (op === 0 || op === 1) previousText += txt;
         });
       }
     }
 
-    // 3. Prevent duplicate blocks if no change occurred
+
     if (currentText === previousText) {
       return res.json({ message: 'Ledger stable. No updates to commit.', version: repo.currentVersionIndex });
     }
 
-    // 4. Calculate Character-level Variations
+
     const nextVersion = repo.currentVersionIndex + 1;
     const diffs = dmp.diff_main(previousText, currentText);
     dmp.diff_cleanupEfficiency(diffs);
 
-    // 5. Commit to cloud storage
+
     const newCommit = new Commit({
       googleDocId: filePath,
       versionIndex: nextVersion,
@@ -408,7 +283,7 @@ router.post('/commit-payload', async (req, res) => {
     });
     await newCommit.save();
 
-    // Advance repository version tracking pointer index
+
     repo.currentVersionIndex = nextVersion;
     await repo.save();
 
