@@ -20,7 +20,8 @@ const trackedFiles = {};
 
 const {track}=require('../controller/local.js')
 const {download_commit}=require('../controller/local.js')
-const {commits}=require('../controller/local.js')
+const {commits}=require('../controller/local.js');
+const { protect } = require('../middleware/authmiddleware.js');
 
 
 
@@ -28,7 +29,7 @@ const {commits}=require('../controller/local.js')
  * 🚀 ROUTE: POST /api/word/track
  * PURPOSE: "git init" for a local Word file. Registers database state and deploys the OS watcher.
  */
-router.post('/track', track);
+router.post('/track',protect, track);
 
 
 
@@ -38,7 +39,7 @@ router.post('/track', track);
 router.get('/download-commit', download_commit);
 
 
-router.get('/commits', commits);
+router.get('/commits',protect, commits);
 
 /**
  * 📝 DATABASE CONVERGENCE GATEWAY: Persists low-frequency micro-commits securely to MongoDB

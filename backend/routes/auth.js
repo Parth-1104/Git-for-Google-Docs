@@ -1,10 +1,12 @@
-
+// routes/auth.js
 const express = require('express');
 const { google } = require('googleapis');
+const jwt = require('jsonwebtoken');
+
+// 🔌 IMPORT YOUR MODELS
+const User = require('../models/user.js'); // Ensure this matches your models filename exactly (case-sensitive on Mac/Linux)
+
 const router = express.Router();
-require('dotenv').config();
-
-
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -15,10 +17,13 @@ const oauth2Client = new google.auth.OAuth2(
 /**
  * 🔗 ROUTE: GET /api/auth/google
  * PURPOSE: Generates the Google Login Link and sends it to the frontend
+ * UPDATES: Added 'openid', 'profile', and 'email' scopes to extract user profile data.
  */
 router.get('/google', (req, res) => {
-  // Define the exact permissions we configured in the Google Console
   const scopes = [
+    'openid',
+    'profile',
+    'email',
     'https://www.googleapis.com/auth/documents.readonly',
     'https://www.googleapis.com/auth/drive.metadata.readonly'
   ];
@@ -26,7 +31,7 @@ router.get('/google', (req, res) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline', 
     scope: scopes,
-    prompt: 'consent' 
+    prompt: 'consent' // Forces Google to send the refresh_token every time for safety
   });
 
   res.json({ url });
@@ -34,7 +39,8 @@ router.get('/google', (req, res) => {
 
 /**
  * 🔄 ROUTE: GET /api/auth/google/callback
- * PURPOSE: Google redirects here with an authorization code. We exchange it for access tokens.
+ * PURPOSE: Google redirects here with an authorization code. 
+ * We exchange it for tokens, sync the User in MongoDB, and issue a platform session JWT.
  */
 router.get('/google/callback', async (req, res) => {
   const { code } = req.query;
@@ -44,27 +50,59 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
-    
+    // 1. Exchange authorization code for access and refresh tokens
     const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
     
     console.log('✅ Tokens successfully retrieved from Google!');
-    console.log('Access Token:', tokens.access_token);
-    console.log('Refresh Token:', tokens.refresh_token); // Keep this safe!
 
-    // TODO: In a production app, save tokens.refresh_token to your MongoDB user record.
+    // 2. Fetch user profile details using the authenticated client
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfoResponse = await oauth2.userinfo.get();
+    const { id: googleId, email, name, picture } = userInfoResponse.data;
+
+    // 3. Sync User profile info in MongoDB Atlas
+    let user = await User.findOne({ googleId });
     
-    // For now, let's display a success message directly in the browser with the tokens
-    res.send(`
-      <h1>Authentication Successful!</h1>
-      <p>Your MERN backend is now authenticated with Google.</p>
-      <p><strong>Copy your Refresh Token safely for the next step:</strong></p>
-      <code>${tokens.refresh_token || 'Refresh token already granted previously. If blank, clear app permissions in Google Account and retry.'}</code>
-    `);
+    if (!user) {
+      console.log(`🆕 Creating fresh system registration footprint for: ${email}`);
+      user = new User({
+        googleId,
+        email,
+        displayName: name,
+        avatarUrl: picture,
+        googleRefreshToken: tokens.refresh_token // Store it safely for background doc-fetches
+      });
+      await user.save();
+    } else if (tokens.refresh_token) {
+      // If the user already existed but re-authenticated, update their refresh token if sent
+      user.googleRefreshToken = tokens.refresh_token;
+      await user.save();
+    }
+
+    // 4. Issue a 7-day JWT access token for your React frontend session state
+    const sessionToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // 5. Cleanly redirect back to your React Frontend App
+    // We append the session token and basic info as query params so React can grab it
+    const FRONTEND_DASHBOARD_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+    
+    return res.redirect(`${FRONTEND_DASHBOARD_URL}/?token=${sessionToken}&name=${encodeURIComponent(user.displayName)}&avatar=${encodeURIComponent(user.avatarUrl)}`);
 
   } catch (error) {
-    console.error('Error during Google authentication callback:', error);
-    res.status(500).send('Authentication failed.');
+    console.error('❌ Google authentication callback crashed:', error);
+    
+    // Send the actual systemic error text back to the browser so we can read it instantly
+    return res.status(500).send(`
+      <h1>Authentication Failed</h1>
+      <p><strong>System Error Details:</strong></p>
+      <pre style="background: #1a1a1a; color: #ff6b6b; padding: 15px; border-radius: 8px; font-family: monospace; overflow-x: auto;">${error.stack || error.message}</pre>
+    `);
   }
-});
+}); // 💡 FIXED: Re-added this missing closing callback function brace block!
 
 module.exports = router;
