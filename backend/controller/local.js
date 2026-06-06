@@ -138,5 +138,126 @@ const track = async (req, res) => {
   }
 
 
+  const download_commit=async (req, res) => {
+    const { filePath, targetVersion } = req.query;
+  
+    if (!filePath || !targetVersion) {
+      return res.status(400).json({ error: 'Missing filePath or targetVersion parameter.' });
+    }
+  
+    try {
+      const absolutePath = path.resolve(decodeURIComponent(filePath));
+      const targetVersionNum = parseInt(targetVersion, 10);
+  
+      // 1. Fetch all commits from Genesis up to our target version ordered chronologically
+      const commits = await Commit.find({
+        googleDocId: absolutePath,
+        versionIndex: { $lte: targetVersionNum }
+      }).sort({ versionIndex: 1 });
+  
+      if (commits.length === 0) {
+        return res.status(404).json({ error: 'No version history records found for this document.' });
+      }
+  
+      // 2. State Machine Reconstruction: Replay the raw diff operations step-by-step
+      let reconstructedText = "";
+  
+      for (const commit of commits) {
+        if (commit.commitType === 'GENESIS') {
+          // Version 1 is always our starting baseline text string block
+          reconstructedText = commit.deltas[0][1];
+        } else {
+          // Loop through the atomic diff components to morph the text state to the next version
+          let nextTextIteration = "";
+          
+          commit.deltas.forEach(([operation, text]) => {
+            if (operation === 0 || operation === 1) {
+              // 0 (EQUAL) and 1 (INSERT) both contribute characters to the next version state
+              nextTextIteration += text;
+            }
+            // -1 (DELETE) blocks are explicitly ignored so they drop out of the string matrix
+          });
+          
+          reconstructedText = nextTextIteration;
+        }
+      }
+  
+      // 3. Compile the pure reconstructed text string into native Word paragraph segments
+      const textLines = reconstructedText.split('\n');
+      const documentParagraphs = textLines.map(line => {
+        return new Paragraph({
+          children: [new TextRun({ text: line, size: 24, font: "Calibri" })],
+          spacing: { after: 200 }
+        });
+      });
+  
+      // 4. Generate the native docx File Container
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: documentParagraphs
+        }]
+      });
+  
+      // 5. Pack binary buffer and stream headers back as an attachment file download
+      const buffer = await Packer.toBuffer(doc);
+      const downloadName = `v${targetVersionNum}_${path.basename(absolutePath)}`;
+  
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+      
+      return res.send(buffer);
+  
+    } catch (error) {
+      console.error('Failed to construct downloadable asset:', error.message);
+      return res.status(500).json({ error: 'Failed to compile version target file binary mapping.' });
+    }
+  }
 
-  module.exports={track}
+
+  const commits=async (req, res) => {
+    let { filePath } = req.query;
+  
+    if (!filePath) {
+      return res.status(400).json({ error: 'Missing filePath query parameter' });
+    }
+  
+    try {
+      // 1. 🌟 THE FIX: Explicitly decode percent-encoded symbols sent via URL string queries
+      const decodedPath = decodeURIComponent(filePath);
+      const absolutePath = path.resolve(decodedPath);
+  
+      // 2. Structural Guard: Verify if this file has actually been initialized in our records
+      const repoExists = await Repository.findOne({ googleDocId: absolutePath });
+      if (!repoExists) {
+        return res.status(404).json({ 
+          error: 'Target file has not been initialized under active tracking tracking loops yet.' 
+        });
+      }
+  
+      // 3. Pull all recorded diff structures ordered from newest version index downwards
+      const commits = await Commit.find({ googleDocId: absolutePath }).sort({ versionIndex: -1 });
+      
+      res.json({
+        filePath: absolutePath,
+        fileName: path.basename(absolutePath),
+        currentVersion: repoExists.currentVersionIndex,
+        commits: commits.map(c => ({
+          version: c.versionIndex,
+          type: c.commitType || 'MANUAL_SAVE',
+          timestamp: c.timestamp,
+          changes: c.deltas.map(part => ({
+            operation: part[0] === 1 ? 'INSERT' : part[0] === -1 ? 'DELETE' : 'EQUAL',
+            text: part[1]
+          }))
+        }))
+      });
+    } catch (error) {
+      console.error('Timeline compilation failure:', error.message);
+      res.status(500).json({ error: 'Failed to retrieve version history timeline compilation metrics.' });
+    }
+  }
+
+
+
+  module.exports={track,download_commit,commits}
