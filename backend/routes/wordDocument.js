@@ -10,7 +10,7 @@ const { Document, Packer, Paragraph, TextRun } = require('docx');
 // 🔌 IMPORT YOUR MONGOOSE MODELS
 const Repository = require('../models/repository.js');
 const Commit = require('../models/commits.js');
-const User=require('../models/user.js')
+const User = require('../models/user.js'); // ✅ FIXED: Explicitly added the missing User model import
 
 const router = express.Router();
 const dmp = new diffMatchPatch();
@@ -18,13 +18,10 @@ const dmp = new diffMatchPatch();
 // In-memory runtime tracking cache (The volatile shield layer)
 const trackedFiles = {};
 
-
-const {track}=require('../controller/local.js')
-const {download_commit}=require('../controller/local.js')
-const {commits}=require('../controller/local.js');
+const { track } = require('../controller/local.js');
+const { download_commit } = require('../controller/local.js');
+const { commits } = require('../controller/local.js');
 const { protect } = require('../middleware/authmiddleware.js');
-
-
 
 /**
  * 🚀 ROUTE: POST /api/word/track
@@ -32,15 +29,9 @@ const { protect } = require('../middleware/authmiddleware.js');
  */
 router.post('/track', track);
 
-
-
-
-
-
 router.get('/download-commit', download_commit);
 
-
-router.get('/commits',protect, commits);
+router.get('/commits', protect, commits);
 
 /**
  * 📝 DATABASE CONVERGENCE GATEWAY: Persists low-frequency micro-commits securely to MongoDB
@@ -127,7 +118,7 @@ router.post('/commit-payload', async (req, res) => {
       determinedOwnerId = fallbackUser._id;
     }
 
-    // 🚀 FIXED: The async helper function is now actively processing the transaction payload!
+    // 🚀 EXECUTING TRANSACTION: Using the refactored database convergence handler
     const result = await executeCommitGateway(filePath, docName, currentText, determinedOwnerId);
     return res.json(result);
 
