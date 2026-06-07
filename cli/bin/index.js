@@ -13,7 +13,7 @@ const command = args[0];
 const targetFile = args[1];
 
 // 🌐 Target Local or Live Backend Deploy URL
-const BACKEND_URL = process.env.BACKEND_URL;
+const BACKEND_URL = "https://git-for-google-docs.onrender.com";
 
 
 if (command !== 'track' || !targetFile) {

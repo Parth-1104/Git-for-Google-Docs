@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogIn, LogOut, Folder, RefreshCw, Download, FileText, GitCommit } from 'lucide-react';
 
-const BACKEND_URL = "http://localhost:8080";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function App() {
   const [user, setUser] = useState(null);

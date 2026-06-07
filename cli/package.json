@@ -1,20 +1,23 @@
 {
-  "name": "gitdoc-cli",
+  "name": "@singhparth427/gitdoc-cli",
   "version": "1.0.0",
   "description": "Local system filesystem tracking daemon for GitDoc",
   "main": "bin/index.js",
   "bin": {
     "gitdoc": "./bin/index.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["git", "version-control", "docx"],
-  "author": "",
+  "author": "Parth Pankaj Singh",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.17.0",
-    "chokidar": "^4.0.1",
+    "chokidar": "^5.0.0",
     "mammoth": "^1.12.0"
   }
 }
