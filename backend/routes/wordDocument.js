@@ -29,7 +29,7 @@ const { protect } = require('../middleware/authmiddleware.js');
  * 🚀 ROUTE: POST /api/word/track
  * PURPOSE: "git init" for a local Word file. Registers database state and deploys the OS watcher.
  */
-router.post('/track',protect, track);
+router.post('/track', track);
 
 
 
