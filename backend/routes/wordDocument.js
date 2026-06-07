@@ -10,6 +10,7 @@ const { Document, Packer, Paragraph, TextRun } = require('docx');
 // 🔌 IMPORT YOUR MONGOOSE MODELS
 const Repository = require('../models/repository.js');
 const Commit = require('../models/commits.js');
+const User=require('../models/user.js')
 
 const router = express.Router();
 const dmp = new diffMatchPatch();
@@ -44,69 +45,69 @@ router.get('/commits',protect, commits);
 /**
  * 📝 DATABASE CONVERGENCE GATEWAY: Persists low-frequency micro-commits securely to MongoDB
  */
-async function executeCommitGateway(filePath, wasDiscarded) {
-  try {
-    let currentText = "";
-
-    // 🌟 THE RECOVERY GAP: If discarded, pull from our hot RAM buffer instead of the rolled-back disk file
-    if (wasDiscarded) {
-      currentText = trackedFiles[filePath].liveBuffer;
-    } else {
-      if (fs.existsSync(filePath)) {
-        const docExtraction = await mammoth.extractRawText({ path: filePath });
-        currentText = docExtraction.value;
-      }
-    }
-
-    const previousText = trackedFiles[filePath].cachedText || "";
-
-    // If the text matches exactly, don't write duplicate data blocks to the DB
-    if (currentText === previousText) {
-      console.log(`ℹ️ Ledger balanced: No textual divergence detected. DB write bypassed.`);
-      return;
-    }
-
-    // Advance identifiers
-    const nextVersion = trackedFiles[filePath].currentVersionIndex + 1;
-    const determinedCommitType = wasDiscarded ? 'AUTO_RECOVERY_CLOSE' : 'MANUAL_SAVE';
-
-    // Run the text character diffing engine
-    const diffs = dmp.diff_main(previousText, currentText);
-    dmp.diff_cleanupEfficiency(diffs);
-
-    // Save the structural delta array straight to MongoDB
-    const nextCommit = new Commit({
+async function executeCommitGateway(filePath, docName, currentText, ownerId) {
+  let repo = await Repository.findOne({ googleDocId: filePath });
+  
+  if (!repo) {
+    console.log(`🆕 Mapping fresh cloud repository node for: ${docName || path.basename(filePath)}`);
+    repo = new Repository({
       googleDocId: filePath,
-      versionIndex: nextVersion,
-      deltas: diffs,
-      commitType: determinedCommitType
+      docName: docName || path.basename(filePath),
+      refreshToken: 'CLI_TERMINAL_AGENT',
+      currentVersionIndex: 1,
+      owner: ownerId
     });
-    await nextCommit.save();
+    await repo.save();
 
-    // Fast-forward the Repository state pointer index in your tracking collection
-    await Repository.findOneAndUpdate(
-      { googleDocId: filePath },
-      { currentVersionIndex: nextVersion }
-    );
-
-    console.log(`\n📦 [MongoDB Ledger Commit Success]`);
-    console.log(`   └─ File Reference: ${path.basename(filePath)}`);
-    console.log(`   └─ Version Stamped: v${nextVersion}`);
-    console.log(`   └─ Saved State Source: ${wasDiscarded ? "Memory Recovery Stream (Don't Save)" : "Physical Disk Save"}`);
-    console.log(`-------------------------------------------`);
-
-    // Fast-forward our runtime operational reference frames
-    trackedFiles[filePath].cachedText = currentText;
-    trackedFiles[filePath].liveBuffer = currentText;
-    trackedFiles[filePath].currentVersionIndex = nextVersion;
-
-  } catch (error) {
-    console.error('❌ Failed to commit transaction entry to Database:', error.message);
+    const genesisCommit = new Commit({
+      googleDocId: filePath,
+      versionIndex: 1,
+      deltas: [[0, currentText]],
+      commitType: 'GENESIS'
+    });
+    await genesisCommit.save();
+    return { version: 1, message: 'Genesis cloud repository mapped successfully!' };
   }
+
+  const lastCommit = await Commit.findOne({ googleDocId: filePath }).sort({ versionIndex: -1 });
+  
+  let previousText = "";
+  if (lastCommit) {
+    if (lastCommit.commitType === 'GENESIS') {
+      previousText = lastCommit.deltas[0][1];
+    } else {
+      lastCommit.deltas.forEach(([op, txt]) => {
+        if (op === 0 || op === 1) previousText += txt;
+      });
+    }
+  }
+
+  if (currentText === previousText) {
+    return { version: repo.currentVersionIndex, message: 'Ledger stable. No updates to commit.' };
+  }
+
+  const nextVersion = repo.currentVersionIndex + 1;
+  const diffs = dmp.diff_main(previousText, currentText);
+  dmp.diff_cleanupEfficiency(diffs);
+
+  const newCommit = new Commit({
+    googleDocId: filePath,
+    versionIndex: nextVersion,
+    deltas: diffs,
+    commitType: 'MANUAL_SAVE'
+  });
+  await newCommit.save();
+
+  repo.currentVersionIndex = nextVersion;
+  await repo.save();
+
+  console.log(`\n📦 [Cloud Ledger Synchronized via CLI] - v${nextVersion} - ${docName}`);
+  return { version: nextVersion, message: 'Version state synced successfully!' };
 }
 
-
-
+/**
+ * 📥 ROUTE: POST /api/word/commit-payload
+ */
 router.post('/commit-payload', async (req, res) => {
   const { filePath, docName, currentText } = req.body;
 
@@ -115,75 +116,24 @@ router.post('/commit-payload', async (req, res) => {
   }
 
   try {
-   
-    let repo = await Repository.findOne({ googleDocId: filePath });
-    if (!repo) {
-      repo = new Repository({
-        googleDocId: filePath,
-        docName: docName || path.basename(filePath),
-        refreshToken: 'CLI_TERMINAL_AGENT',
-        currentVersionIndex: 1
-      });
-      await repo.save();
-
-     
-      const genesisCommit = new Commit({
-        googleDocId: filePath,
-        versionIndex: 1,
-        deltas: [[0, currentText]],
-        commitType: 'GENESIS'
-      });
-      await genesisCommit.save();
-
-      return res.json({ message: 'Genesis cloud repository mapped successfully!', version: 1 });
-    }
-
- 
-    const lastCommit = await Commit.findOne({ googleDocId: filePath }).sort({ versionIndex: -1 });
-    
-
-    let previousText = "";
-    if (lastCommit) {
-      if (lastCommit.commitType === 'GENESIS') {
-        previousText = lastCommit.deltas[0][1];
-      } else {
-
-        lastCommit.deltas.forEach(([op, txt]) => {
-          if (op === 0 || op === 1) previousText += txt;
-        });
+    let determinedOwnerId;
+    if (req.user && req.user.id) {
+      determinedOwnerId = req.user.id;
+    } else {
+      const fallbackUser = await User.findOne();
+      if (!fallbackUser) {
+        return res.status(400).json({ error: 'No system users found to map repository ownership parameters.' });
       }
+      determinedOwnerId = fallbackUser._id;
     }
 
-
-    if (currentText === previousText) {
-      return res.json({ message: 'Ledger stable. No updates to commit.', version: repo.currentVersionIndex });
-    }
-
-
-    const nextVersion = repo.currentVersionIndex + 1;
-    const diffs = dmp.diff_main(previousText, currentText);
-    dmp.diff_cleanupEfficiency(diffs);
-
-
-    const newCommit = new Commit({
-      googleDocId: filePath,
-      versionIndex: nextVersion,
-      deltas: diffs,
-      commitType: 'MANUAL_SAVE'
-    });
-    await newCommit.save();
-
-
-    repo.currentVersionIndex = nextVersion;
-    await repo.save();
-
-    console.log(`\n📦 [Cloud Ledger Synchronized via CLI] - v${nextVersion} - ${docName}`);
-
-    res.json({ message: 'Version state synced successfully!', version: nextVersion });
+    // 🚀 FIXED: The async helper function is now actively processing the transaction payload!
+    const result = await executeCommitGateway(filePath, docName, currentText, determinedOwnerId);
+    return res.json(result);
 
   } catch (error) {
     console.error('Cloud synchronization processing crashed:', error.message);
-    res.status(500).json({ error: 'Internal system fault logging snapshot matrix.' });
+    return res.status(500).json({ error: 'Internal system fault logging snapshot matrix.' });
   }
 });
 
