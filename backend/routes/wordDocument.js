@@ -128,4 +128,15 @@ router.post('/commit-payload', async (req, res) => {
   }
 });
 
+
+router.get('/repositories', protect, async (req, res) => {
+  try {
+    // Find all repository documents where owner fields equal the verified JWT session id
+    const usersRepos = await Repository.find({ owner: req.user.id }).sort({ updatedAt: -1 });
+    res.json(usersRepos);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to pull tracking registry list indices from cloud matrix." });
+  }
+});
+
 module.exports = router;
