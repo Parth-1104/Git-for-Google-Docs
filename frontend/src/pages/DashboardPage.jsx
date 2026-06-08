@@ -1,6 +1,7 @@
 // frontend/src/pages/DashboardPage.jsx
 import React, { useState, useEffect } from 'react';
 import { LogOut, Folder, RefreshCw, Download, GitCommit, List, FileClock, ChevronRight,Globe, Laptop } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
   const [trackingMode, setTrackingMode] = useState('LOCAL'); // 🔄 Modes: 'LOCAL' or 'GOOGLE_DOC'
@@ -146,6 +147,7 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
     setTrackingMode(path.length === 44 && !path.includes('/') ? 'GOOGLE_DOC' : 'LOCAL');
     fetchDocumentTimeline(path);
   };
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-[#fafafa] text-[#1f2328] relative overflow-x-hidden font-sans antialiased selection:bg-[#bbf7d0] selection:text-[#1f2328]">
@@ -154,7 +156,11 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
       <div className="max-w-6xl mx-auto p-6 relative z-10">
         {/* Header Section */}
         <header className="flex justify-between items-center border-b border-[#e1e4e8] pb-5 mb-8 bg-white/80 backdrop-blur px-4 py-3 rounded-xl shadow-sm border">
-          <div>
+        <div 
+    onClick={() => navigate('/')} 
+    className="cursor-pointer hover:opacity-80 transition-opacity select-none"
+    title="Return to Landing Page"
+  >
             <h1 className="text-xl font-bold text-[#24292f] flex items-center gap-2">
               📁 GitDoc <span className="text-[10px] font-mono text-[#1a7f37] bg-[#dafbe1] border border-[#a1dfb1] px-2.5 py-0.5 rounded-full font-semibold">Cloud Hub</span>
             </h1>
