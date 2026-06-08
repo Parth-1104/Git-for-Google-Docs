@@ -12,28 +12,31 @@ function AppContent() {
   const navigate = useNavigate();
 
   // 🔐 Catch incoming parameters right after successful Google Auth redirects
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const name = params.get('name');
-    const avatar = params.get('avatar');
+ // 🔐 Catch incoming parameters right after successful Google Auth redirects
+ useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const name = params.get('name');
+  const avatar = params.get('avatar');
 
-    if (token) {
-      localStorage.setItem('gitdoc_token', token);
-      const profile = { name, avatar };
-      localStorage.setItem('gitdoc_user', JSON.stringify(profile));
-      setUser(profile);
-      // Safely flush the URL parameters clean back to standard root path window views
-      window.history.replaceState({}, document.title, "/");
-      navigate('/dashboard');
-    } else {
-      const savedUser = localStorage.getItem('gitdoc_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
+  if (token) {
+    // 💾 Safely commit credentials to browser local state caches
+    localStorage.setItem('gitdoc_token', token);
+    const profile = { name, avatar: decodeURIComponent(avatar) };
+    localStorage.setItem('gitdoc_user', JSON.stringify(profile));
+    
+    setUser(profile);
+    
+    // ✅ FIX: Flush search queries and lock position directly on /dashboard state path
+    navigate('/dashboard', { replace: true });
+  } else {
+    const savedUser = localStorage.getItem('gitdoc_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
     }
-    setLoading(false);
-  }, [navigate]);
+  }
+  setLoading(false);
+}, [navigate]);
 
   const handleLoginTrigger = async () => {
     try {

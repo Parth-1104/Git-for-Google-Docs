@@ -91,7 +91,8 @@ router.get('/google/callback', async (req, res) => {
     // We append the session token and basic info as query params so React can grab it
     const FRONTEND_DASHBOARD_URL = process.env.FRONTEND_URL || "http://localhost:5173";
     
-    return res.redirect(`${FRONTEND_DASHBOARD_URL}/?token=${sessionToken}&name=${encodeURIComponent(user.displayName)}&avatar=${encodeURIComponent(user.avatarUrl)}`);
+    // ✅ Redirects straight to http://localhost:5173/dashboard?token=...
+return res.redirect(`${FRONTEND_DASHBOARD_URL}/dashboard?token=${sessionToken}&name=${encodeURIComponent(user.displayName)}&avatar=${encodeURIComponent(user.avatarUrl)}`);
 
   } catch (error) {
     console.error('❌ Google authentication callback crashed:', error);
