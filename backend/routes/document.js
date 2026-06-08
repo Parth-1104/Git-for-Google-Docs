@@ -9,6 +9,8 @@ const {protect}=require('../middleware/authmiddleware.js')
 const router = express.Router();
 const dmp = new diffMatchPatch();
 
+const User=require('../models/user.js')
+
 const activeSyncJobs = {};
 
 /**
