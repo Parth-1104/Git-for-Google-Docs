@@ -81,11 +81,16 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // 4. Issue a 7-day JWT access token for your React frontend session state
-    const sessionToken = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // routes/auth.js (Inside your Google callback)
+const sessionToken = jwt.sign(
+  { 
+    id: user._id,       // ✅ Explicitly pass both formats to prevent 
+    userId: user._id,   //    property matching failures downstream
+    email: user.email 
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
 
     // 5. Cleanly redirect back to your React Frontend App
     // We append the session token and basic info as query params so React can grab it

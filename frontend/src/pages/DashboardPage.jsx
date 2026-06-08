@@ -62,18 +62,18 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
 
     try {
       if (trackingMode === 'GOOGLE_DOC') {
-        const cleanedDocId = extractGoogleDocId(filePath);
+        const cleanedDocId = extractGoogleDocId(filePath); // 🎯 Extract it first
         
-        // Target your newly added Google Docs endpoint
+        console.log("🚀 Sending Track Request for ID:", cleanedDocId);
+
         const res = await fetch(`${BACKEND_URL}/api/document/track`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}` // 🔥 Ensure this matches your backend token expectations
           },
           body: JSON.stringify({
-            googleDocId: cleanedDocId,
-            refreshToken: localStorage.getItem('gitdoc_refresh_token') || 'CLI_TERMINAL_AGENT' 
+            googleDocId: cleanedDocId // ✅ Passing the exact 44-character ID string
           })
         });
         
@@ -81,10 +81,11 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
         if (!res.ok) throw new Error(data.error || 'Google Drive changes engine rejected registration request.');
         
         setStatus({ type: 'success', message: data.message });
+        
+        // ✅ FIX: Update the input state and fetch using the CLEANED ID, not the raw URL string
         setFilePath(cleanedDocId);
         fetchDocumentTimeline(cleanedDocId);
       } else {
-        // Fallback to traditional local document tracking pipeline
         await fetchDocumentTimeline(filePath);
       }
     } catch (err) {
@@ -93,7 +94,13 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
   };
 
   const fetchDocumentTimeline = async (selectedPath) => {
-    const targetPath = selectedPath || filePath;
+    let targetPath = selectedPath || filePath;
+    
+    // ✅ FIX: Force extraction check on any string passed into this timeline compiler
+    if (trackingMode === 'GOOGLE_DOC' || (targetPath.includes('docs.google.com'))) {
+      targetPath = extractGoogleDocId(targetPath);
+    }
+
     if (!targetPath.trim()) return;
 
     try {
@@ -115,15 +122,22 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
 
   const silentlyPollTimeline = async () => {
     try {
+      // ✅ FIX: Clean the active state path before firing the network request
+      const targetPath = trackingMode === 'GOOGLE_DOC' ? extractGoogleDocId(filePath) : filePath;
+      
+      if (!targetPath.trim()) return;
+
       const token = localStorage.getItem('gitdoc_token');
-      const res = await fetch(`${BACKEND_URL}/api/word/commits?filePath=${encodeURIComponent(filePath)}`, {
+      const res = await fetch(`${BACKEND_URL}/api/word/commits?filePath=${encodeURIComponent(targetPath)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
         setCommits(data.commits || []);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Silent polling failed:", e);
+    }
   };
 
   const handleSelectRepository = (path) => {
