@@ -81,6 +81,20 @@ function AppContent() {
       
       {/* Fallback Catch */}
       <Route path="*" element={<Navigate to="/" replace />} />
+      // Quick addition to your React Routes inside App.jsx
+<Route path="/privacy" element={
+  <div className="p-8 font-mono text-xs max-w-2xl text-gray-600">
+    <h1 className="text-lg font-bold mb-4 text-black">Privacy Policy</h1>
+    <p>DocGit accesses Google Drive metadata and Document structures solely to compute local character-level diff operations. Your data stream content is never packaged, distributed, or sold to third-party entities.</p>
+  </div>
+} />
+
+<Route path="/terms" element={
+  <div className="p-8 font-mono text-xs max-w-2xl text-gray-600">
+    <h1 className="text-lg font-bold mb-4 text-black">Terms of Service</h1>
+    <p>By utilizing the DocGit terminal daemon and web-client interface framework, you authorize the real-time transmission of file update differentials to our synchronized cloud database node matrix for version history storage.</p>
+  </div>
+} />
     </Routes>
   );
 }
