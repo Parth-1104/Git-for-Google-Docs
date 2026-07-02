@@ -82,14 +82,14 @@ export default function LandingPage({ handleLoginTrigger, user, navigate }) {
             </button>
           )}
           
-          <a 
+          {/* <a 
             href="https://github.com/Parth-1104/GitInspect" 
             target="_blank" 
             rel="noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-[#f6f8fa] text-[#24292f] border border-[#d0d7de] font-medium py-3 px-6 rounded-xl transition-all shadow-sm text-sm"
           >
-            GitHub Core Source <ExternalLink size={14} className="opacity-60" />
-          </a>
+            GitHub Core Core Source <ExternalLink size={14} className="opacity-60" />
+          </a> */}
         </div>
       </div>
 
