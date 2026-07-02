@@ -68,10 +68,17 @@ function AppContent() {
   return (
     <Routes>
       {/* Public Landing Directory View */}
-      <Route 
-        path="/" 
-        element={<LandingPage handleLoginTrigger={handleLoginTrigger} />} 
-      />
+      {/* Inside your Routes entry frame in App.jsx */}
+<Route 
+  path="/" 
+  element={
+    <LandingPage 
+      handleLoginTrigger={handleLoginTrigger} 
+      user={user} 
+      navigate={navigate} 
+    />
+  } 
+/>
       
       {/* Secured Project Space Entry */}
       <Route 

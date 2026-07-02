@@ -1,14 +1,24 @@
 // frontend/src/pages/LandingPage.jsx
 import React, { useState } from 'react';
-import { LogIn, Terminal, Cpu, FileText, CheckCircle, Copy, Check, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
+import { LogIn, Terminal, Cpu, CheckCircle, Copy, Check, ArrowRight, ExternalLink, ShieldCheck, Loader2, LayoutDashboard } from 'lucide-react';
 
-export default function LandingPage({ handleLoginTrigger }) {
+export default function LandingPage({ handleLoginTrigger, user, navigate }) {
   const [copiedStep, setCopiedStep] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const copyToClipboard = (text, stepId) => {
     navigator.clipboard.writeText(text);
     setCopiedStep(stepId);
     setTimeout(() => setCopiedStep(null), 2000);
+  };
+
+  const handleLoginClick = async () => {
+    setIsRedirecting(true);
+    try {
+      await handleLoginTrigger();
+    } catch (err) {
+      setIsRedirecting(false);
+    }
   };
 
   return (
@@ -20,29 +30,57 @@ export default function LandingPage({ handleLoginTrigger }) {
       {/* Structural Hero Header Section */}
       <div className="max-w-3xl w-full text-center space-y-6 mb-16 relative z-10 pt-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#eff1f3] border border-[#d1d5da] text-[#24292f] rounded-full text-xs font-mono font-medium shadow-sm">
-          <span className="flex h-2 w-2 rounded-full bg-[#1a7f37] animate-pulse" />
-          Production Gateway Connected
+          <span className={`flex h-2 w-2 rounded-full ${isRedirecting ? 'bg-[#bf8700] animate-pulse' : 'bg-[#1a7f37] animate-pulse'}`} />
+          {user 
+            ? `Welcome back, ${user.name}` 
+            : isRedirecting ? 'Waking Auth Gateway Core (Render)...' : 'Production Gateway Connected'}
         </div>
 
         <h1 className="text-5xl font-extrabold tracking-tight text-[#24292f] sm:text-7xl flex items-center justify-center gap-3">
-          GitDoc 
+          DocGit 
           <span className="text-[#1a7f37] text-xs font-mono align-middle bg-[#dafbe1] border border-[#a1dfb1] px-2.5 py-1 rounded-full font-semibold">
             v2.0.4
           </span>
         </h1>
 
         <p className="text-[#57606a] max-w-2xl mx-auto text-base sm:text-lg leading-relaxed font-normal">
-          A high-performance local filesystem versioning daemon. Track asynchronous updates, run character-level Myers diffing, and balance remote cloud database ledgers effortlessly.
+          Automated version tracking for local documents. Run sub-second character diffs and manage historical snapshots with a light-weight background agent.
         </p>
         
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button 
-            onClick={handleLoginTrigger} 
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-[#24292f] hover:bg-[#1f2328] text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] group text-sm"
-          >
-            <LogIn size={16} /> Sign in with Google Account
-            <ArrowRight size={14} className="opacity-60 group-hover:translate-x-0.5 transition-transform" />
-          </button>
+          {user ? (
+            /* 🔥 PREMIUM ALREADY LOGGED IN VIEW */
+            <button 
+              onClick={() => navigate('/dashboard')} 
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-[#1a7f37] hover:bg-[#1a6f30] text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] group text-sm border border-[#1a7f37]"
+            >
+              <LayoutDashboard size={16} /> Go to Dashboard
+              <ArrowRight size={14} className="opacity-70 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          ) : (
+            /* 🔓 STANDARD LOGGED OUT VIEW */
+            <button 
+              onClick={handleLoginClick} 
+              disabled={isRedirecting}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 font-semibold py-3 px-6 rounded-xl transition-all shadow-md text-sm ${
+                isRedirecting 
+                  ? 'bg-[#57606a] text-gray-200 cursor-not-allowed opacity-80' 
+                  : 'bg-[#24292f] hover:bg-[#1f2328] text-white hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] group'
+              }`}
+            >
+              {isRedirecting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-[#dafbe1]" />
+                  Booting Secure Auth Session...
+                </>
+              ) : (
+                <>
+                  <LogIn size={16} /> Sign in with Google Account
+                  <ArrowRight size={14} className="opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </button>
+          )}
           
           <a 
             href="https://github.com/Parth-1104/GitInspect" 
@@ -50,7 +88,7 @@ export default function LandingPage({ handleLoginTrigger }) {
             rel="noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-[#f6f8fa] text-[#24292f] border border-[#d0d7de] font-medium py-3 px-6 rounded-xl transition-all shadow-sm text-sm"
           >
-            GitHub Core Core Source <ExternalLink size={14} className="opacity-60" />
+            GitHub Core Source <ExternalLink size={14} className="opacity-60" />
           </a>
         </div>
       </div>
@@ -66,10 +104,10 @@ export default function LandingPage({ handleLoginTrigger }) {
             </div>
             <div>
               <h2 className="text-base font-bold text-[#24292f] flex items-center gap-2">
-                1. Global Distribution Registry
+                1. Install the CLI Agent
               </h2>
               <p className="text-[#57606a] text-xs leading-relaxed mt-1">
-                Deploy the low-level tracking background core across your global operating machine layers using the public npm distribution module ecosystem.
+                Install the light-weight background tracking daemon globally on your machine via the public npm registry network.
               </p>
             </div>
           </div>
@@ -94,10 +132,10 @@ export default function LandingPage({ handleLoginTrigger }) {
             </div>
             <div>
               <h2 className="text-base font-bold text-[#24292f] flex items-center gap-2">
-                2. Live Workspace Convergence
+                2. Initialize Tracking
               </h2>
               <p className="text-[#57606a] text-xs leading-relaxed mt-1">
-                Latch the operational tracking listener to any absolute path matrix target. Fires encrypted string differentials on save sequences.
+                Point the listener at any file path workspace descriptor. The daemon automatically commits localized, real-time differentials whenever you save.
               </p>
             </div>
           </div>

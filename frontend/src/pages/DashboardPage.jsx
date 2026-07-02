@@ -185,19 +185,19 @@ export default function DashboardPage({ user, handleLogout, BACKEND_URL }) {
               </h2>
               
               {/* GitHub-style Tracking Mode Toggle Switch */}
-              <div className="grid grid-cols-2 p-1 bg-[#f6f8fa] border border-[#d0d7de] rounded-lg mb-4 text-xs font-medium">
+              <div className="grid grid-cols-1 p-1 bg-[#f6f8fa] border border-[#d0d7de] rounded-lg mb-4 text-xs font-medium">
                 <button 
                   onClick={() => { setTrackingMode('LOCAL'); setFilePath(''); }}
                   className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all ${trackingMode === 'LOCAL' ? 'bg-white text-[#24292f] shadow-sm font-semibold border border-[#d0d7de]' : 'text-[#57606a] hover:text-[#24292f]'}`}
                 >
                   <Laptop size={13} /> Local File
                 </button>
-                <button 
+                {/* <button 
                   onClick={() => { setTrackingMode('GOOGLE_DOC'); setFilePath(''); }}
                   className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all ${trackingMode === 'GOOGLE_DOC' ? 'bg-white text-[#24292f] shadow-sm font-semibold border border-[#d0d7de]' : 'text-[#57606a] hover:text-[#24292f]'}`}
                 >
                   <Globe size={13} /> Google Doc
-                </button>
+                </button> */}
               </div>
 
               <div className="space-y-4">
