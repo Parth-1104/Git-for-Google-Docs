@@ -36,16 +36,18 @@ export default function LandingPage({ handleLoginTrigger, user, navigate }) {
             : isRedirecting ? 'Waking Auth Gateway Core (Render)...' : 'Production Gateway Connected'}
         </div>
 
-        <h1 className="text-5xl font-extrabold tracking-tight text-[#24292f] sm:text-7xl flex items-center justify-center gap-3">
-          DocGit 
+        <h1 className="text-5xl font-extrabold tracking-tight text-[#24292f] sm:text-7xl flex ml-8.5 items-center justify-center gap-3">
+          GitDoc
           <span className="text-[#1a7f37] text-xs font-mono align-middle bg-[#dafbe1] border border-[#a1dfb1] px-2.5 py-1 rounded-full font-semibold">
             v2.0.4
           </span>
         </h1>
 
+        <strong>Complete version control for Word documents.</strong> 
+
         <p className="text-[#57606a] max-w-2xl mx-auto text-base sm:text-lg leading-relaxed font-normal">
-          Automated version tracking for local documents. Run sub-second character diffs and manage historical snapshots with a light-weight background agent.
-        </p>
+  Track local changes, view character-level diffs, and roll back to any previous version straight from your terminal.
+</p>
         
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
           {user ? (
@@ -71,7 +73,7 @@ export default function LandingPage({ handleLoginTrigger, user, navigate }) {
               {isRedirecting ? (
                 <>
                   <Loader2 size={16} className="animate-spin text-[#dafbe1]" />
-                  Booting Secure Auth Session...
+                  Booting...
                 </>
               ) : (
                 <>
@@ -157,6 +159,95 @@ export default function LandingPage({ handleLoginTrigger, user, navigate }) {
         </div>
 
       </div>
+
+{/* ========================================================================= */}
+      {/* NEW PREMIUM QUICKSTART WORKFLOW GUIDE                                     */}
+      {/* ========================================================================= */}
+      <div className="max-w-4xl w-full mt-24 border border-[#e1e4e8] rounded-2xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden relative z-10">
+        
+        {/* Section Header */}
+        <div className="p-8 border-b border-[#e1e4e8] bg-[#fafafa]/50 backdrop-blur-sm">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#1a7f37] font-bold mb-1">
+            System Implementation Guide
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-[#24292f]">
+            Initialize Your Document Tracking Environment
+          </h2>
+          <p className="text-[#57606a] text-sm max-w-xl mt-1">
+            Follow this 3-step lifecycle pipeline to install the core agent, link your local workspace workspace, and manage your first version checkpoint stream.
+          </p>
+        </div>
+
+        {/* Workflow Matrix Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#e1e4e8]">
+          
+          {/* Step 1: Environment Setup */}
+          <div className="p-8 space-y-4 hover:bg-[#fafafa]/30 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="text-xs font-mono font-bold text-[#57606a] flex items-center justify-between">
+                <span>STEP // 01</span>
+                <span className="px-2 py-0.5 rounded bg-[#eff1f3] text-[10px] border border-[#d1d5da] text-[#24292f]">Setup</span>
+              </div>
+              <h3 className="text-base font-bold text-[#24292f]">
+                Global Installation
+              </h3>
+              <p className="text-[#57606a] text-xs leading-relaxed">
+                Pull down the core background binary engine directly from the public npm registry layer to expose the global execution utility command.
+              </p>
+            </div>
+            <div className="pt-4">
+              <div className="bg-[#f6f8fa] border border-[#d0d7de] rounded-lg p-2.5 font-mono text-[11px] text-[#24292f] flex items-center justify-between shadow-inner">
+                <span className="truncate select-all text-left">npm i -g @singhparth427/gitdoc-cli</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: System Hook Link */}
+          <div className="p-8 space-y-4 hover:bg-[#fafafa]/30 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="text-xs font-mono font-bold text-[#57606a] flex items-center justify-between">
+                <span>STEP // 02</span>
+                <span className="px-2 py-0.5 rounded bg-[#dafbe1] text-[10px] border border-[#a1dfb1] text-[#1a7f37]">Link</span>
+              </div>
+              <h3 className="text-base font-bold text-[#24292f]">
+                Initialize the Path
+              </h3>
+              <p className="text-[#57606a] text-xs leading-relaxed">
+                Connect the background watcher daemon to your target working document location matrix string path to launch the local listener hook.
+              </p>
+            </div>
+            <div className="pt-4">
+              <div className="bg-[#f6f8fa] border border-[#d0d7de] rounded-lg p-2.5 font-mono text-[11px] text-[#24292f] flex items-center justify-between shadow-inner">
+                <span className="truncate select-all text-left text-gray-500">gitdoc track "./my-file.docx"</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3: Run & Synchronize */}
+          <div className="p-8 space-y-4 hover:bg-[#fafafa]/30 transition-colors flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="text-xs font-mono font-bold text-[#57606a] flex items-center justify-between">
+                <span>STEP // 03</span>
+                <span className="px-2 py-0.5 rounded bg-[#ddf4ff] text-[10px] border border-[#54aeff]/30 text-[#0969da]">Stream</span>
+              </div>
+              <h3 className="text-base font-bold text-[#24292f]">
+                Modify & Automate
+              </h3>
+              <p className="text-[#57606a] text-xs leading-relaxed">
+                Work normally inside your document editor. Every local save operation automatically compiles line deltas and updates your central dashboard.
+              </p>
+            </div>
+            <div className="pt-4">
+              <div className="text-[10px] font-mono text-[#57606a] flex items-center gap-1.5 bg-[#f6f8fa] p-2.5 rounded-lg border border-[#e1e4e8]">
+                <span className="h-1.5 w-1.5 bg-[#1a7f37] rounded-full animate-ping" />
+                <span>Streaming live updates directly to cloud</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
 
       {/* Platform Features Grid Footer */}
       <footer className="mt-20 border-t border-[#e1e4e8] pt-8 w-full max-w-2xl relative z-10">
