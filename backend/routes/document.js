@@ -10,6 +10,7 @@ const router = express.Router();
 const dmp = new diffMatchPatch();
 
 const User=require('../models/user.js')
+const Repository=require('../models/repository.js')
 
 const activeSyncJobs = {};
 
@@ -18,19 +19,16 @@ const activeSyncJobs = {};
  * PURPOSE: "git init" using Google's live Changes Stream
  */
 router.post('/track', protect, async (req, res) => {
-  const { googleDocId } = req.body; // 💡 Cleaned: frontend no longer needs to send refreshToken
+  const { googleDocId } = req.body;
 
   if (!googleDocId) {
     return res.status(400).json({ error: 'Missing googleDocId parameter vector.' });
   }
 
-  if (activeSyncJobs[googleDocId]) {
-    return res.json({ message: 'Document is already being actively tracked.' });
-  }
-
   try {
-    // 🔍 1. Look up the logged-in user in the database to fetch their secret Google Refresh Token
-    const dbUser = await User.findById(req.user.userId || req.user.id);
+    // 🔑 1. Identify the exact logged-in user from the auth middleware
+    const userId = req.user.userId || req.user.id || req.user._id;
+    const dbUser = await User.findById(userId);
     
     if (!dbUser || !dbUser.googleRefreshToken) {
       return res.status(401).json({ 
@@ -38,7 +36,7 @@ router.post('/track', protect, async (req, res) => {
       });
     }
 
-    const refreshToken = dbUser.googleRefreshToken; // ✅ Got the real, hidden token safely from MongoDB!
+    const refreshToken = dbUser.googleRefreshToken;
 
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -50,15 +48,36 @@ router.post('/track', protect, async (req, res) => {
     const drive = google.drive({ version: 'v3', auth: oauth2Client });
     const docs = google.docs({ version: 'v1', auth: oauth2Client });
 
-    console.log(`\n🔍 Initializing stream tracking for Doc ID: ${googleDocId}`);
+    console.log(`\n🔍 Initializing stream tracking for Doc ID: ${googleDocId} by user: ${dbUser.name || userId}`);
     
     const fileMetadata = await drive.files.get({ fileId: googleDocId, fields: 'name' });
     const docName = fileMetadata.data.name || 'Untitled Document';
-    console.log(`📂 Document Found: "${docName}"`);
+
+    // 💾 2. PERSIST OR UPDATE REPOSITORY IN MONGODB LINKED TO THIS SPECIFIC USER
+    let repository = await Repository.findOne({ owner: userId, googleDocId });
+    
+    if (!repository) {
+      repository = new Repository({
+        owner: userId,           // 👈 Binds this document strictly to the logged-in user!
+        googleDocId,
+        docName,
+        refreshToken: 'GOOGLE_DRIVE_STREAM_AGENT',
+        currentVersionIndex: 1
+      });
+      await repository.save();
+      console.log(`📂 Created new Repository record for user ${userId}`);
+    } else {
+      // Update docName if it changed
+      repository.docName = docName;
+      await repository.save();
+    }
+
+    if (activeSyncJobs[googleDocId]) {
+      return res.json({ message: 'Document is already being actively tracked.', repository });
+    }
 
     const tokenResponse = await drive.changes.getStartPageToken({});
     let lastSavedPageToken = tokenResponse.data.startPageToken;
-    console.log(`📌 Git HEAD Checkpoint initialized at Token: ${lastSavedPageToken}`);
 
     activeSyncJobs[googleDocId] = { cachedText: "" };
 
@@ -76,7 +95,7 @@ router.post('/track', protect, async (req, res) => {
 
         if (docWasModified) {
           console.log(`\n⚡ Live Change Stream Event Captured for "${docName}"!`);
-          await processDocumentCommit(docs, googleDocId);
+          await processDocumentCommit(docs, googleDocId, repository._id);
         }
 
         if (changesResponse.data.newStartPageToken) {
@@ -92,7 +111,8 @@ router.post('/track', protect, async (req, res) => {
 
     return res.json({
       message: `Stream engine successfully tracking "${docName}".`,
-      googleDocId
+      googleDocId,
+      repositoryId: repository._id
     });
 
   } catch (error) {
@@ -101,8 +121,7 @@ router.post('/track', protect, async (req, res) => {
   }
 });
 
-
-async function processDocumentCommit(docsInstance, docId) {
+async function processDocumentCommit(docsInstance, docId, repositoryId) {
   try {
     const docContent = await docsInstance.documents.get({ documentId: docId });
     
@@ -120,31 +139,16 @@ async function processDocumentCommit(docsInstance, docId) {
     });
 
     const previousText = activeSyncJobs[docId].cachedText || "";
-    
-    
     if (fullText === previousText) return;
-
-    console.log(`📄 Version Content Loaded (${fullText.length} characters).`);
 
     const diffs = dmp.diff_main(previousText, fullText);
     dmp.diff_cleanupEfficiency(diffs); 
 
-    console.log(`📐 Computed Live Git Diffs:`);
-    
-    diffs.forEach(part => {
-      const operation = part[0]; // 0 = Equal, 1 = Insert, -1 = Delete
-      const text = part[1];
-
-      if (operation === 1) {
-        process.stdout.write(`\x1b[32m[+] "${text}"\x1b[0m `); // Green
-      } else if (operation === -1) {
-        process.stdout.write(`\x1b[31m[-] "${text}"\x1b[0m `); // Red
-      }
-    });
-    console.log("\n-------------------------------------------");
-
+    // Optional: Increment version index on repository schema upon successful commit
+    await Repository.findByIdAndUpdate(repositoryId, { $inc: { currentVersionIndex: 1 } });
 
     activeSyncJobs[docId].cachedText = fullText;
+    console.log(`✅ [Sync Success] Repository updated for version commit.`);
 
   } catch (error) {
     console.error('Failed to parse document text content or calculate diffs:', error.message);
