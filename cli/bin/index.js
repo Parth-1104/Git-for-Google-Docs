@@ -15,10 +15,33 @@ const targetFile = args[1];
 // 🌐 Target Local or Live Backend Deploy URL
 const BACKEND_URL = "https://git-for-google-docs.onrender.com";
 
+// 🔑 Path to local config storage for the auth token
+const configPath = path.join(process.env.HOME || process.env.USERPROFILE, '.gitdoc_config.json');
 
 if (command !== 'track' || !targetFile) {
   console.log('\n❌ Invalid Usage Sequence Detected.');
   console.log('💡 Run it like this: gitdoc track <path_to_file.docx>\n');
+  process.exit(1);
+}
+
+// 🛡️ Verify that the user has logged in and has an active token
+if (!fs.existsSync(configPath)) {
+  console.error('\n❌ Authentication Error: No active session found.');
+  console.error('👉 Please authenticate your CLI first using your web dashboard auth token or login utility.\n');
+  process.exit(1);
+}
+
+let userToken = '';
+try {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  userToken = config.token;
+} catch (err) {
+  console.error('\n❌ Error reading local session configuration file.\n');
+  process.exit(1);
+}
+
+if (!userToken) {
+  console.error('\n❌ Authentication Token missing inside configuration profile.\n');
   process.exit(1);
 }
 
@@ -59,11 +82,15 @@ watcher.on('all', async (event, changedFilePath) => {
 
       console.log(`📤 Dispatching differential bytes payload stream to cloud...`);
       
-      // 2. Ship clean processing object models up to your main Express instance server router
+      // 2. Ship clean processing object models with the Authorization Bearer token attached
       const response = await axios.post(`${BACKEND_URL}/api/word/commit-payload`, {
         filePath: absolutePath,
         docName: fileName,
         currentText: currentText
+      }, {
+        headers: {
+          Authorization: `Bearer ${userToken}` // 🟢 Authenticates the user profile on the server
+        }
       });
 
       console.log(`✅ [Sync Success] Ledger adjusted to Version Reference Index: v${response.data.version}`);

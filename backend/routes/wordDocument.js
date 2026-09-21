@@ -1,4 +1,3 @@
-// routes/wordDocument.js
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -10,17 +9,12 @@ const { Document, Packer, Paragraph, TextRun } = require('docx');
 // 🔌 IMPORT YOUR MONGOOSE MODELS
 const Repository = require('../models/repository.js');
 const Commit = require('../models/commits.js');
-const User = require('../models/user.js'); // ✅ FIXED: Explicitly added the missing User model import
+const User = require('../models/user.js');
 
 const router = express.Router();
 const dmp = new diffMatchPatch();
 
-// In-memory runtime tracking cache (The volatile shield layer)
-const trackedFiles = {};
-
-const { track } = require('../controller/local.js');
-const { download_commit } = require('../controller/local.js');
-const { commits } = require('../controller/local.js');
+const { track, download_commit, commits } = require('../controller/local.js');
 const { protect } = require('../middleware/authmiddleware.js');
 
 /**
@@ -37,7 +31,8 @@ router.get('/commits', protect, commits);
  * 📝 DATABASE CONVERGENCE GATEWAY: Persists low-frequency micro-commits securely to MongoDB
  */
 async function executeCommitGateway(filePath, docName, currentText, ownerId) {
-  let repo = await Repository.findOne({ googleDocId: filePath });
+  // 🔍 FIXED: Query by BOTH owner and googleDocId to align with your compound index
+  let repo = await Repository.findOne({ owner: ownerId, googleDocId: filePath });
   
   if (!repo) {
     console.log(`🆕 Mapping fresh cloud repository node for: ${docName || path.basename(filePath)}`);
@@ -60,7 +55,7 @@ async function executeCommitGateway(filePath, docName, currentText, ownerId) {
     return { version: 1, message: 'Genesis cloud repository mapped successfully!' };
   }
 
-  const lastCommit = await Commit.findOne({ googleDocId: filePath }).sort({ versionIndex: -1 });
+  const lastCommit = await Commit.findOne({ googleDocId: filePath, versionIndex: repo.currentVersionIndex }).sort({ versionIndex: -1 });
   
   let previousText = "";
   if (lastCommit) {
@@ -98,8 +93,9 @@ async function executeCommitGateway(filePath, docName, currentText, ownerId) {
 
 /**
  * 📥 ROUTE: POST /api/word/commit-payload
+ * 🛡️ FIXED: Added `protect` middleware so `req.user` is populated correctly!
  */
-router.post('/commit-payload', async (req, res) => {
+router.post('/commit-payload', protect, async (req, res) => {
   const { filePath, docName, currentText } = req.body;
 
   if (!filePath || currentText === undefined) {
@@ -107,18 +103,9 @@ router.post('/commit-payload', async (req, res) => {
   }
 
   try {
-    let determinedOwnerId;
-    if (req.user && req.user.id) {
-      determinedOwnerId = req.user.id;
-    } else {
-      const fallbackUser = await User.findOne();
-      if (!fallbackUser) {
-        return res.status(400).json({ error: 'No system users found to map repository ownership parameters.' });
-      }
-      determinedOwnerId = fallbackUser._id;
-    }
+    // 🔑 Guaranteed owner ID from the verified JWT token middleware
+    const determinedOwnerId = req.user.id || req.user._id;
 
-    // 🚀 EXECUTING TRANSACTION: Using the refactored database convergence handler
     const result = await executeCommitGateway(filePath, docName, currentText, determinedOwnerId);
     return res.json(result);
 
@@ -128,11 +115,10 @@ router.post('/commit-payload', async (req, res) => {
   }
 });
 
-
 router.get('/repositories', protect, async (req, res) => {
   try {
-    // Find all repository documents where owner fields equal the verified JWT session id
-    const usersRepos = await Repository.find({ owner: req.user.id }).sort({ updatedAt: -1 });
+    const ownerId = req.user.id || req.user._id;
+    const usersRepos = await Repository.find({ owner: ownerId }).sort({ updatedAt: -1 });
     res.json(usersRepos);
   } catch (error) {
     res.status(500).json({ error: "Failed to pull tracking registry list indices from cloud matrix." });
