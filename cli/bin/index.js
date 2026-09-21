@@ -2,32 +2,62 @@
 
 const path = require('path');
 const fs = require('fs');
+const readline = require('readline');
 const chokidar = require('chokidar');
 const mammoth = require('mammoth');
 const axios = require('axios');
 require('dotenv').config();
 
-// Catch running command line syntax arguments (e.g., gitdoc track ./test.docx)
 const args = process.argv.slice(2);
 const command = args[0];
 const targetFile = args[1];
 
-// 🌐 Target Local or Live Backend Deploy URL
 const BACKEND_URL = "https://git-for-google-docs.onrender.com";
-
-// 🔑 Path to local config storage for the auth token
 const configPath = path.join(process.env.HOME || process.env.USERPROFILE, '.gitdoc_config.json');
 
+// --- LOGIN COMMAND HANDLER ---
+if (command === 'login') {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  console.log('\n===========================================');
+  console.log('🔑 GITDOC CLI AUTHENTICATION SETUP');
+  console.log('===========================================\n');
+  
+  rl.question('Paste your auth token from the web dashboard: ', (token) => {
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
+      console.log('❌ Token cannot be empty.');
+      rl.close();
+      process.exit(1);
+    }
+
+    try {
+      fs.writeFileSync(configPath, JSON.stringify({ token: trimmedToken }, null, 2));
+      console.log('\n✅ Successfully authenticated! Config saved to:', configPath);
+      console.log('👉 You can now track documents using: gitdoc track <path_to_file.docx>\n');
+    } catch (err) {
+      console.error('❌ Failed to save configuration file:', err.message);
+    }
+    rl.close();
+  });
+  return;
+}
+
+// --- TRACK COMMAND HANDLER ---
 if (command !== 'track' || !targetFile) {
   console.log('\n❌ Invalid Usage Sequence Detected.');
-  console.log('💡 Run it like this: gitdoc track <path_to_file.docx>\n');
+  console.log('💡 Usage instructions:');
+  console.log('   gitdoc login');
+  console.log('   gitdoc track <path_to_file.docx>\n');
   process.exit(1);
 }
 
-// 🛡️ Verify that the user has logged in and has an active token
 if (!fs.existsSync(configPath)) {
   console.error('\n❌ Authentication Error: No active session found.');
-  console.error('👉 Please authenticate your CLI first using your web dashboard auth token or login utility.\n');
+  console.error('👉 Please run "gitdoc login" first to link your account.\n');
   process.exit(1);
 }
 
@@ -55,13 +85,12 @@ if (!fs.existsSync(absolutePath)) {
 }
 
 console.log(`\n===========================================`);
-console.log(`🚀 GITDOC LOCAL AGENT DEPLOYED SUCCESSFULY`);
+console.log(`🚀 GITDOC LOCAL AGENT DEPLOYED SUCCESSFULLY`);
 console.log(`🔍 Monitoring Asset: ${fileName}`);
 console.log(`📡 Connection Target: ${BACKEND_URL}`);
 console.log(`⚡ Automated sync active on "Cmd + S"...`);
 console.log(`===========================================`);
 
-// Mount filesystem watcher loop targeting parent space directory
 const watcher = chokidar.watch(fileDirectory, {
   persistent: true,
   ignoreInitial: true,
@@ -71,25 +100,22 @@ const watcher = chokidar.watch(fileDirectory, {
 watcher.on('all', async (event, changedFilePath) => {
   const changedFileName = path.basename(changedFilePath);
 
-  // Catch the manual save timestamp write variations on your hard disk drive
   if (changedFileName === fileName && event === 'change') {
     try {
       console.log(`\n💾 Action Intercepted: System changes flushed to disk...`);
       
-      // 1. Process character text conversion natively inside the terminal sandbox
       const extraction = await mammoth.extractRawText({ path: absolutePath });
       const currentText = extraction.value;
 
       console.log(`📤 Dispatching differential bytes payload stream to cloud...`);
       
-      // 2. Ship clean processing object models with the Authorization Bearer token attached
       const response = await axios.post(`${BACKEND_URL}/api/word/commit-payload`, {
         filePath: absolutePath,
         docName: fileName,
         currentText: currentText
       }, {
         headers: {
-          Authorization: `Bearer ${userToken}` // 🟢 Authenticates the user profile on the server
+          Authorization: `Bearer ${userToken}`
         }
       });
 

@@ -31,7 +31,6 @@ router.get('/commits', protect, commits);
  * 📝 DATABASE CONVERGENCE GATEWAY: Persists low-frequency micro-commits securely to MongoDB
  */
 async function executeCommitGateway(filePath, docName, currentText, ownerId) {
-  // 🔍 FIXED: Query by BOTH owner and googleDocId to align with your compound index
   let repo = await Repository.findOne({ owner: ownerId, googleDocId: filePath });
   
   if (!repo) {
@@ -55,12 +54,13 @@ async function executeCommitGateway(filePath, docName, currentText, ownerId) {
     return { version: 1, message: 'Genesis cloud repository mapped successfully!' };
   }
 
-  const lastCommit = await Commit.findOne({ googleDocId: filePath, versionIndex: repo.currentVersionIndex }).sort({ versionIndex: -1 });
+  // 🛡️ Safely find the latest commit for this file/repo
+  const lastCommit = await Commit.findOne({ googleDocId: filePath }).sort({ versionIndex: -1 });
   
   let previousText = "";
-  if (lastCommit) {
+  if (lastCommit && lastCommit.deltas) {
     if (lastCommit.commitType === 'GENESIS') {
-      previousText = lastCommit.deltas[0][1];
+      previousText = lastCommit.deltas[0] ? lastCommit.deltas[0][1] : "";
     } else {
       lastCommit.deltas.forEach(([op, txt]) => {
         if (op === 0 || op === 1) previousText += txt;
@@ -72,7 +72,7 @@ async function executeCommitGateway(filePath, docName, currentText, ownerId) {
     return { version: repo.currentVersionIndex, message: 'Ledger stable. No updates to commit.' };
   }
 
-  const nextVersion = repo.currentVersionIndex + 1;
+  const nextVersion = (repo.currentVersionIndex || 1) + 1;
   const diffs = dmp.diff_main(previousText, currentText);
   dmp.diff_cleanupEfficiency(diffs);
 

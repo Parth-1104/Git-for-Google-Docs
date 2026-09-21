@@ -1,6 +1,6 @@
 {
   "name": "@singhparth427/gitdoc-cli",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Local system filesystem tracking daemon for GitDoc",
   "main": "bin/index.js",
   "bin": {
